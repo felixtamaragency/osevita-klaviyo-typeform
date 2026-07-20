@@ -1,10 +1,10 @@
-exports.handler = async function(event) {
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+module.exports = async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).send("Method Not Allowed");
   }
 
   try {
-    const payload = JSON.parse(event.body);
+    const payload = req.body;
     const KLAVIYO_API_KEY = process.env.KLAVIYO_PRIVATE_KEY;
 
     const formResponse = payload.form_response;
@@ -12,17 +12,14 @@ exports.handler = async function(event) {
     const formId = formResponse?.form_id;
     const responseId = formResponse?.token;
 
-    // Cherche l'email dans tous les types de champs possibles
     const answers = formResponse?.answers || [];
-    const emailAnswer = answers.find(a => a.type === "email");
-    const email = emailAnswer?.email;
+    const email = answers.find(a => a.type === "email")?.email;
 
     if (!email) {
-      console.log("Answers reçues:", JSON.stringify(answers));
-      return { statusCode: 400, body: "No email found" };
+      return res.status(400).json({ error: "No email found", answers });
     }
 
-    const klaviyoRes = await fetch("https://a.klaviyo.com/api/events/", {
+    await fetch("https://a.klaviyo.com/api/events/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -55,11 +52,9 @@ exports.handler = async function(event) {
       })
     });
 
-    console.log("Klaviyo status:", klaviyoRes.status);
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+    return res.status(200).json({ ok: true });
 
   } catch (err) {
-    console.log("Erreur:", err.message);
-    return { statusCode: 500, body: err.message };
+    return res.status(500).json({ error: err.message });
   }
 };
