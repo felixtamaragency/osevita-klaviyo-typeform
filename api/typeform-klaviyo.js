@@ -45,7 +45,6 @@ export default async function handler(req, res) {
                   type: "profile",
                   attributes: {
                     email,
-                    first_name: firstName || "",
                     subscriptions: {
                       email: {
                         marketing: {
