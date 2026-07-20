@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     }
 
     // Abonner le profil à la liste
-    await fetch(`https://a.klaviyo.com/api/lists/${LIST_ID}/relationships/profiles/`, {
+    await fetch("https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -33,22 +33,20 @@ export default async function handler(req, res) {
         "revision": "2024-02-15",
       },
       body: JSON.stringify({
-        data: [
-          {
-            type: "profile",
-            attributes: {
-              email,
-              first_name: firstName || "",
-              subscriptions: {
-                email: {
-                  marketing: {
-                    consent: "SUBSCRIBED"
-                  }
+        data: {
+          type: "profile-subscription-bulk-create-job",
+          attributes: {
+            list_id: LIST_ID,
+            subscriptions: [
+              {
+                email,
+                channels: {
+                  email: ["MARKETING"]
                 }
               }
-            }
+            ]
           }
-        ]
+        }
       })
     });
 
