@@ -25,18 +25,36 @@ export default async function handler(req, res) {
     // Email
     const email = answers.find(a => a.type === "email")?.email;
 
-    // Prénom (field short_text)
+    // Prénom
     const firstName =
       answers.find(a => a.type === "text" || a.type === "short_text")?.text || "";
 
-    // qui : lire la réponse à "Cette recommandation est pour…"
+    // qui
     let qui = "";
     const quiAnswer = answers.find(a => a.field?.id === QUI_FIELD_ID);
     const quiLabel = quiAnswer?.choice?.label?.toLowerCase() || "";
-    if (quiLabel.includes("enfant")) {
-      qui = "enfant";
-    } else if (quiLabel.includes("adulte")) {
-      qui = "adulte";
+    if (quiLabel.includes("enfant")) qui = "enfant";
+    else if (quiLabel.includes("adulte")) qui = "adulte";
+
+    // URL de résultats complète (avec reco + complements)
+    // 1. On retrouve l'ending atteint
+    const reachedEndingId = formResponse?.ending?.id;
+    const endings = formResponse?.definition?.endings || [];
+    const ending = endings.find(e => e.id === reachedEndingId);
+    let resultsPageUrl =
+      ending?.properties?.redirect_url || ending?.title || "";
+
+    // 2. On remplace les {{field:REF}} par les vraies réponses
+    if (resultsPageUrl) {
+      resultsPageUrl = resultsPageUrl.replace(
+        /\{\{\s*field:([^}]+?)\s*\}\}/g,
+        (match, ref) => {
+          const a = answers.find(x => x.field?.ref === ref.trim());
+          const val =
+            a?.text || a?.email || a?.choice?.label || "";
+          return encodeURIComponent(val);
+        }
+      );
     }
 
     if (!email) {
@@ -76,7 +94,7 @@ export default async function handler(req, res) {
     );
     console.log("SUBSCRIPTION", subRes.status, await subRes.text());
 
-    // 2. Laisser Klaviyo traiter l'abonnement
+    // 2. Attendre le traitement de l'abonnement
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // 3. Envoyer l'event
@@ -101,6 +119,7 @@ export default async function handler(req, res) {
             },
             properties: {
               results_url: resultsUrl,
+              results_page_url: resultsPageUrl,
               first_name: firstName,
               qui,
               form_id: formId,
@@ -112,7 +131,7 @@ export default async function handler(req, res) {
     });
     console.log("EVENT", evtRes.status, await evtRes.text());
 
-    return res.status(200).json({ ok: true, qui, firstName });
+    return res.status(200).json({ ok: true, qui, firstName, resultsPageUrl });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
