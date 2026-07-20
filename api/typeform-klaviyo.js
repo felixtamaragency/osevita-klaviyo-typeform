@@ -14,16 +14,16 @@ export default async function handler(req, res) {
   };
 
   try {
+    // 👇 LIGNE DE LOG : affiche tout le payload reçu de Typeform
+    console.log("PAYLOAD", JSON.stringify(req.body, null, 2));
+
     const payload = req.body;
     const formResponse = payload.form_response;
     const resultsUrl = formResponse?.response_url;
     const formId = formResponse?.form_id;
     const responseId = formResponse?.token;
 
-    // Champs cachés Typeform (prenom, qui, etc.)
     const hidden = formResponse?.hidden || {};
-
-    // qui : hidden en priorité, sinon fallback sur l'URL
     let qui = hidden.qui || "";
     if (!qui && resultsUrl) {
       try {
@@ -33,7 +33,6 @@ export default async function handler(req, res) {
 
     const answers = formResponse?.answers || [];
     const email = answers.find(a => a.type === "email")?.email;
-    // prenom : hidden en priorité, sinon 1ère réponse texte
     const firstName =
       hidden.prenom ||
       answers.find(a => a.type === "text" || a.type === "short_text")?.text ||
