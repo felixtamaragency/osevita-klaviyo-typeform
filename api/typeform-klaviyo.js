@@ -20,12 +20,24 @@ export default async function handler(req, res) {
     const formId = formResponse?.form_id;
     const responseId = formResponse?.token;
 
-    const urlParams = new URL(resultsUrl).searchParams;
-    const qui = urlParams.get("qui") || "";
+    // Champs cachés Typeform (prenom, qui, etc.)
+    const hidden = formResponse?.hidden || {};
+
+    // qui : hidden en priorité, sinon fallback sur l'URL
+    let qui = hidden.qui || "";
+    if (!qui && resultsUrl) {
+      try {
+        qui = new URL(resultsUrl).searchParams.get("qui") || "";
+      } catch (e) {}
+    }
 
     const answers = formResponse?.answers || [];
     const email = answers.find(a => a.type === "email")?.email;
-    const firstName = answers.find(a => a.type === "text" || a.type === "short_text")?.text || "";
+    // prenom : hidden en priorité, sinon 1ère réponse texte
+    const firstName =
+      hidden.prenom ||
+      answers.find(a => a.type === "text" || a.type === "short_text")?.text ||
+      "";
 
     if (!email) {
       return res.status(400).json({ error: "No email found", answers });
@@ -62,8 +74,7 @@ export default async function handler(req, res) {
         }),
       }
     );
-    const subBody = await subRes.text();
-    console.log("SUBSCRIPTION", subRes.status, subBody);
+    console.log("SUBSCRIPTION", subRes.status, await subRes.text());
 
     // 2. Laisser Klaviyo traiter l'abonnement
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -99,14 +110,9 @@ export default async function handler(req, res) {
         },
       }),
     });
-    const evtBody = await evtRes.text();
-    console.log("EVENT", evtRes.status, evtBody);
+    console.log("EVENT", evtRes.status, await evtRes.text());
 
-    return res.status(200).json({
-      ok: true,
-      subscription: { status: subRes.status, body: subBody },
-      event: { status: evtRes.status, body: evtBody },
-    });
+    return res.status(200).json({ ok: true, qui, firstName });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
