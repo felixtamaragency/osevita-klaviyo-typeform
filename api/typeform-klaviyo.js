@@ -39,16 +39,32 @@ export default async function handler(req, res) {
         data: {
           type: "profile-subscription-bulk-create-job",
           attributes: {
-            list_id: LIST_ID,
-            subscriptions: [
-              {
-                email,
-                first_name: firstName || "",
-                channels: {
-                  email: ["MARKETING"]
+            profiles: {
+              data: [
+                {
+                  type: "profile",
+                  attributes: {
+                    email,
+                    first_name: firstName || "",
+                    subscriptions: {
+                      email: {
+                        marketing: {
+                          consent: "SUBSCRIBED"
+                        }
+                      }
+                    }
+                  }
                 }
+              ]
+            }
+          },
+          relationships: {
+            list: {
+              data: {
+                type: "list",
+                id: LIST_ID
               }
-            ]
+            }
           }
         }
       })
