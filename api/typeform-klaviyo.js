@@ -14,6 +14,7 @@ export default async function handler(req, res) {
 
     const answers = formResponse?.answers || [];
     const email = answers.find(a => a.type === "email")?.email;
+    const firstName = answers.find(a => a.type === "text" || a.type === "short_text")?.text;
 
     if (!email) {
       return res.status(400).json({ error: "No email found", answers });
@@ -33,7 +34,10 @@ export default async function handler(req, res) {
             profile: {
               data: {
                 type: "profile",
-                attributes: { email }
+                attributes: {
+                  email,
+                  first_name: firstName || "",
+                }
               }
             },
             metric: {
@@ -44,6 +48,7 @@ export default async function handler(req, res) {
             },
             properties: {
               results_url: resultsUrl,
+              first_name: firstName || "",
               form_id: formId,
               response_id: responseId,
             }
