@@ -6,6 +6,7 @@ export default async function handler(req, res) {
   const KLAVIYO_API_KEY = process.env.KLAVIYO_PRIVATE_KEY;
   const LIST_ID = "VeeVZ3";
   const REVISION = "2025-04-15";
+  const QUI_FIELD_ID = "sut2mr1eGqSe"; // field "Cette recommandation est pour…"
 
   const headers = {
     "Content-Type": "application/json",
@@ -14,29 +15,29 @@ export default async function handler(req, res) {
   };
 
   try {
-    // 👇 LIGNE DE LOG : affiche tout le payload reçu de Typeform
-    console.log("PAYLOAD", JSON.stringify(req.body, null, 2));
-
     const payload = req.body;
     const formResponse = payload.form_response;
     const resultsUrl = formResponse?.response_url;
     const formId = formResponse?.form_id;
     const responseId = formResponse?.token;
-
-    const hidden = formResponse?.hidden || {};
-    let qui = hidden.qui || "";
-    if (!qui && resultsUrl) {
-      try {
-        qui = new URL(resultsUrl).searchParams.get("qui") || "";
-      } catch (e) {}
-    }
-
     const answers = formResponse?.answers || [];
+
+    // Email
     const email = answers.find(a => a.type === "email")?.email;
+
+    // Prénom (field short_text)
     const firstName =
-      hidden.prenom ||
-      answers.find(a => a.type === "text" || a.type === "short_text")?.text ||
-      "";
+      answers.find(a => a.type === "text" || a.type === "short_text")?.text || "";
+
+    // qui : lire la réponse à "Cette recommandation est pour…"
+    let qui = "";
+    const quiAnswer = answers.find(a => a.field?.id === QUI_FIELD_ID);
+    const quiLabel = quiAnswer?.choice?.label?.toLowerCase() || "";
+    if (quiLabel.includes("enfant")) {
+      qui = "enfant";
+    } else if (quiLabel.includes("adulte")) {
+      qui = "adulte";
+    }
 
     if (!email) {
       return res.status(400).json({ error: "No email found", answers });
