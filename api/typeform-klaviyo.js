@@ -1,52 +1,60 @@
-exports.handler = async function(event) {
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).send("Method Not Allowed");
   }
 
-  const payload = JSON.parse(event.body);
-  const KLAVIYO_API_KEY = process.env.KLAVIYO_PRIVATE_KEY;
+  try {
+    const payload = req.body;
+    const KLAVIYO_API_KEY = process.env.KLAVIYO_PRIVATE_KEY;
 
-  const email = payload.form_response?.answers?.find(a => a.type === "email")?.email;
-  const responseId = payload.form_response?.token;
-  const formId = payload.form_response?.form_id;
-  const resultsUrl = `https://admin.typeform.com/form/${formId}/results#responses/${responseId}`;
+    const formResponse = payload.form_response;
+    const resultsUrl = formResponse?.response_url;
+    const formId = formResponse?.form_id;
+    const responseId = formResponse?.token;
 
-  if (!email) {
-    return { statusCode: 400, body: "No email found" };
-  }
+    const answers = formResponse?.answers || [];
+    const email = answers.find(a => a.type === "email")?.email;
 
-  await fetch("https://a.klaviyo.com/api/events/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
-      "revision": "2024-02-15",
-    },
-    body: JSON.stringify({
-      data: {
-        type: "event",
-        attributes: {
-          profile: {
-            data: {
-              type: "profile",
-              attributes: { email }
+    if (!email) {
+      return res.status(400).json({ error: "No email found", answers });
+    }
+
+    await fetch("https://a.klaviyo.com/api/events/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
+        "revision": "2024-02-15",
+      },
+      body: JSON.stringify({
+        data: {
+          type: "event",
+          attributes: {
+            profile: {
+              data: {
+                type: "profile",
+                attributes: { email }
+              }
+            },
+            metric: {
+              data: {
+                type: "metric",
+                attributes: { name: "Typeform Completed" }
+              }
+            },
+            properties: {
+              results_url: resultsUrl,
+              form_id: formId,
+              response_id: responseId,
             }
-          },
-          metric: {
-            data: {
-              type: "metric",
-              attributes: { name: "Typeform Completed" }
-            }
-          },
-          properties: {
-            results_url: resultsUrl,
-            form_id: formId,
-            response_id: responseId,
           }
         }
-      }
-    })
-  });
+      })
+    });
 
-  return { statusCode: 200, body: JSON.stringify({ ok: true }) };
-};
+    return res.status(200).json({ ok: true });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
