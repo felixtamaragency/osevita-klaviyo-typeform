@@ -6,6 +6,7 @@ export default async function handler(req, res) {
   try {
     const payload = req.body;
     const KLAVIYO_API_KEY = process.env.KLAVIYO_PRIVATE_KEY;
+    const LIST_ID = "VeeVZ3";
 
     const formResponse = payload.form_response;
     const resultsUrl = formResponse?.response_url;
@@ -23,6 +24,35 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "No email found", answers });
     }
 
+    // Abonner le profil à la liste
+    await fetch(`https://a.klaviyo.com/api/lists/${LIST_ID}/relationships/profiles/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
+        "revision": "2024-02-15",
+      },
+      body: JSON.stringify({
+        data: [
+          {
+            type: "profile",
+            attributes: {
+              email,
+              first_name: firstName || "",
+              subscriptions: {
+                email: {
+                  marketing: {
+                    consent: "SUBSCRIBED"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      })
+    });
+
+    // Envoyer l'event à Klaviyo
     await fetch("https://a.klaviyo.com/api/events/", {
       method: "POST",
       headers: {
