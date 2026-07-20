@@ -12,6 +12,9 @@ export default async function handler(req, res) {
     const formId = formResponse?.form_id;
     const responseId = formResponse?.token;
 
+    const urlParams = new URL(resultsUrl).searchParams;
+    const qui = urlParams.get("qui") || "";
+
     const answers = formResponse?.answers || [];
     const email = answers.find(a => a.type === "email")?.email;
     const firstName = answers.find(a => a.type === "text" || a.type === "short_text")?.text;
@@ -49,6 +52,7 @@ export default async function handler(req, res) {
             properties: {
               results_url: resultsUrl,
               first_name: firstName || "",
+              qui: qui,
               form_id: formId,
               response_id: responseId,
             }
