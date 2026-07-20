@@ -20,12 +20,15 @@ export default async function handler(req, res) {
     const email = answers.find(a => a.type === "email")?.email;
     const firstName = answers.find(a => a.type === "text" || a.type === "short_text")?.text;
 
+    console.log("Email trouvé:", email);
+    console.log("Prénom trouvé:", firstName);
+
     if (!email) {
       return res.status(400).json({ error: "No email found", answers });
     }
 
-    // Abonner le profil à la liste
-    await fetch("https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/", {
+    // Abonner à la liste
+    const subRes = await fetch("https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40,6 +43,7 @@ export default async function handler(req, res) {
             subscriptions: [
               {
                 email,
+                first_name: firstName || "",
                 channels: {
                   email: ["MARKETING"]
                 }
@@ -50,8 +54,12 @@ export default async function handler(req, res) {
       })
     });
 
-    // Envoyer l'event à Klaviyo
-    await fetch("https://a.klaviyo.com/api/events/", {
+    const subText = await subRes.text();
+    console.log("Klaviyo subscribe status:", subRes.status);
+    console.log("Klaviyo subscribe response:", subText);
+
+    // Envoyer l'event
+    const eventRes = await fetch("https://a.klaviyo.com/api/events/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -89,9 +97,12 @@ export default async function handler(req, res) {
       })
     });
 
+    console.log("Klaviyo event status:", eventRes.status);
+
     return res.status(200).json({ ok: true });
 
   } catch (err) {
+    console.log("Erreur:", err.message);
     return res.status(500).json({ error: err.message });
   }
 }
